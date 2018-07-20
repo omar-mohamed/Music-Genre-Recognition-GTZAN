@@ -17,13 +17,13 @@ import matplotlib.pyplot as plt
 
 from PIL import Image
 import random
-
+import numpy as np
 import librosa
 import librosa.display
 #http://opihi.cs.uvic.ca/sound/genres.tar.gz
 #GTZAN genre collection.
 
-y,sr=librosa.load('./genres/blues/blues.00000.au')
+y,sr=librosa.load('./genres/blues/blues.00001.au')
 
 librosa.display.waveplot(y,sr)
 
@@ -37,3 +37,48 @@ plt.colorbar()
 mfcc=librosa.feature.mfcc(y=y,sr=sr)
 
 print(mfcc)
+
+def read_data(directory='./genres'):
+    all_data_mfcc=np.zeros((1000,20,1400),dtype=float)
+    all_labels=np.zeros(1000)
+    label_index=0
+    image_index=0
+    for _, dirs,_ in os.walk(directory):
+        for dir in dirs:
+            for _, _, files in os.walk(directory+'/'+dir):
+                for file in files:
+                    y, sr = librosa.load(directory+'/'+dir+'/'+file)
+                    mfcc = librosa.feature.mfcc(y=y, sr=sr)
+
+                    all_data_mfcc[image_index,:,0:mfcc.shape[1]]=mfcc
+                    all_labels[image_index]=label_index
+                    image_index=image_index+1
+            label_index=label_index+1
+    return all_data_mfcc,all_labels
+
+all_mfcc,all_labels=read_data()
+
+def normalize(x):
+    xmax, xmin, xavg = x.max(axis=0), x.min(axis=0), x.mean(axis=0)
+    print(xmax)
+    print(xmin)
+    print(xavg)
+    x = (x - xavg) / (xmax - xmin)
+    print("After normalization:")
+    print(x)
+    return x
+
+
+print(all_mfcc.shape)
+
+all_mfcc=normalize(all_mfcc)
+
+print(all_mfcc.shape)
+
+
+def randomize(dataset, labels):
+    permutation = np.random.permutation(labels.shape[0])
+    shuffled_dataset = dataset[permutation, :, :]
+    shuffled_labels = labels[permutation]
+    return shuffled_dataset, shuffled_labels
+
