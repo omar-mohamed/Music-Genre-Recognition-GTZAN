@@ -71,7 +71,7 @@ def normalize(x):
 
 print(all_mfcc.shape)
 
-all_mfcc=normalize(all_mfcc)
+#all_mfcc=normalize(all_mfcc)
 
 print(all_mfcc.shape)
 
@@ -82,3 +82,27 @@ def randomize(dataset, labels):
     shuffled_labels = labels[permutation]
     return shuffled_dataset, shuffled_labels
 
+all_mfcc,all_labels=randomize(all_mfcc,all_labels)
+
+
+def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
+    test_counter=np.zeros(num_classes)
+    test_set=np.zeros((num_classes*test_images_for_class,20,1400),dtype=float)
+    test_labels=np.zeros(num_classes*test_images_for_class)
+    deleted_index=[]
+    test_index=0
+    for i in range(labels.shape[0]):
+        _class=labels[i]
+        if test_counter[int(_class)]>=test_images_for_class:
+            continue
+        test_counter[_class]=test_counter[_class]+1
+        deleted_index.append(i)
+        test_labels[test_index]=labels[i]
+        test_set[test_index] = dataset[i]
+        test_index=test_index+1
+    dataset=np.delete(dataset, deleted_index, axis=0)
+    labels=np.delete(labels, deleted_index, axis=0)
+
+    return dataset,labels,test_set,test_labels
+
+train_set,train_labels,test_set,test_labels=split_data(all_mfcc,all_labels)
