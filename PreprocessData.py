@@ -92,8 +92,8 @@ def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
     deleted_index=[]
     test_index=0
     for i in range(labels.shape[0]):
-        _class=labels[i]
-        if test_counter[int(_class)]>=test_images_for_class:
+        _class=int(labels[i])
+        if test_counter[_class]>=test_images_for_class:
             continue
         test_counter[_class]=test_counter[_class]+1
         deleted_index.append(i)
@@ -106,3 +106,22 @@ def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
     return dataset,labels,test_set,test_labels
 
 train_set,train_labels,test_set,test_labels=split_data(all_mfcc,all_labels)
+
+
+pickle_file = 'dataset.pickle'
+
+try:
+    f = open(pickle_file, 'wb')
+    save = {
+        'train_dataset': train_set,
+        'train_labels': train_labels,
+        'test_dataset': train_set,
+        'test_labels': test_labels,
+    }
+    pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
+    print("Done")
+except Exception as e:
+    print('Unable to save data to', pickle_file, ':', e)
+    raise
+
