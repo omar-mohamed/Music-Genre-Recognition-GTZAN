@@ -115,7 +115,7 @@ try:
     save = {
         'train_dataset': train_set,
         'train_labels': train_labels,
-        'test_dataset': train_set,
+        'test_dataset': test_set,
         'test_labels': test_labels,
     }
     pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)

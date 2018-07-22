@@ -66,7 +66,7 @@ patch_size = 5          # convolution filter size
 depth1 = 16             # number of filters in first conv layer
 depth2 = 32             # number of filters in second conv layer
 depth3 = 64             # number of filters in third conv layer
-num_hidden1 = 1024      # the size of the unrolled vector after convolution
+num_hidden1 = 33600      # the size of the unrolled vector after convolution
 num_hidden2 = 512       # the size of the hidden neurons in fully connected layer
 num_hidden3 = 256       # the size of the hidden neurons in fully connected layer
 # regularization_lambda=4e-4
@@ -80,7 +80,7 @@ with graph.as_default():
         tf.float32, shape=(batch_size, image_width, image_height, num_channels), name="train_dataset")
 
     #labels
-    tf_train_labels = tf.placeholder(tf.float32, shape=(batch_size, genres_labels), name="train_labels")
+    tf_train_labels = tf.placeholder(tf.int32, shape=(batch_size), name="train_labels")
 
 
     tf_test_dataset = tf.placeholder(tf.float32, shape=(test_batch_size, image_width, image_height, num_channels), name="test_labels")
@@ -206,5 +206,76 @@ with graph.as_default():
     one_prediction=model(tf_one_input)
     one_prediction=tf.identity(one_prediction, name="one_prediction")
 
+num_steps = 200001   #number of training iterations
 
+
+#used for drawing error and accuracy over time
+training_loss = []
+training_loss_epoch = []
+
+train_accuracy = []
+train_accuracy_epoch = []
+
+valid_accuracy = []
+valid_accuracy_epoch = []
+
+test_prediction = []
+
+test_accuracy=0
+
+with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) as session:
+    tf.global_variables_initializer().run()
+    saver = tf.train.Saver()
+    # `sess.graph` provides access to the graph used in a `tf.Session`.
+    writer = tf.summary.FileWriter('./graph_info', session.graph)
+
+    print('Initialized')
+    for step in range(num_steps):
+        offset = (step * batch_size) % (train_size - batch_size)
+        batch_data = train_data[offset:(offset + batch_size), :, :, :]
+        batch_labels = train_labels[offset:(offset+batch_size)]
+
+        feed_dict = {tf_train_dataset: batch_data, tf_train_labels: batch_labels}
+        _, l, predictions, lr = session.run(
+            [optimize, loss, train_prediction, learning_rate], feed_dict=feed_dict)
+
+        if (step % 50 == 0):
+            print('Learning rate at step %d: %.14f' % (step, lr))
+            print('Minibatch loss at step %d: %f' % (step, l))
+            batch_train_accuracy = accuracy(np.argmax(predictions,axis=1), batch_labels)
+            print('Minibatch accuracy: %.1f%%' % batch_train_accuracy)
+            training_loss.append(l)
+            training_loss_epoch.append(step)
+            train_accuracy.append(batch_train_accuracy)
+            train_accuracy_epoch.append(step)
+            if(lr==0):   #if learning rate reaches 0 break
+                break
+
+
+    #get test predictions in steps to avoid memory problems
+
+    test_pred = np.zeros((test_size, genres_labels))
+
+
+    for step in range(int(test_size / test_batch_size)):
+        offset = (step * test_batch_size) % (test_size - test_batch_size)
+        batch_data = test_data[offset:(offset + test_batch_size), :, :, :]
+        feed_dict = {tf_test_dataset: batch_data}
+        predictions= session.run(
+            [test_prediction], feed_dict=feed_dict)
+
+        test_pred[offset:offset + test_batch_size] = predictions
+
+    # calculate test accuracy and save the model
+
+    test_accuracy, test_predictions = accuracy(np.argmax(test_pred,axis=1), test_labels)
+    writer.close()
+    saver.save(session, "./saved_model/model.ckpt")
+
+
+            ###############################Plot Results and save images##############################
+
+
+
+print('Test accuracy: %.1f%%' % test_accuracy)
 
