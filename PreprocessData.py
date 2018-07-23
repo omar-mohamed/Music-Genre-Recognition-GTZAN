@@ -59,19 +59,20 @@ def read_data(directory='./genres'):
 all_mfcc,all_labels=read_data()
 
 def normalize(x):
-    xmax, xmin, xavg = x.max(axis=0), x.min(axis=0), x.mean(axis=0)
-    print(xmax)
-    print(xmin)
+    xvar, xavg = x.var(axis=0), x.mean(axis=0)
     print(xavg)
-    x = (x - xavg) / (xmax - xmin)
+    x = (x - xavg)
+    xvar[xvar==0]=1
+    x=x/xvar
     print("After normalization:")
+    xmin, xmax = x.min(), x.max()
     print(x)
     return x
 
 
 print(all_mfcc.shape)
 
-#all_mfcc=normalize(all_mfcc)
+all_mfcc=normalize(all_mfcc)
 
 print(all_mfcc.shape)
 
@@ -108,7 +109,7 @@ def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
 train_set,train_labels,test_set,test_labels=split_data(all_mfcc,all_labels)
 
 
-pickle_file = 'dataset.pickle'
+pickle_file = 'dataset_normalized.pickle'
 
 try:
     f = open(pickle_file, 'wb')

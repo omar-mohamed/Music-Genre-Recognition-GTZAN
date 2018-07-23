@@ -13,7 +13,7 @@ import random
 
 ##################load data#####################
 
-all_data = pickle.load(open('dataset.pickle', 'rb'))
+all_data = pickle.load(open('dataset_normalized.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -52,7 +52,7 @@ num_classifiers = 1
 
 
 def accuracy(predictions, labels):
-    batch_size = predictions[0].shape[0]
+    batch_size = predictions.shape[0]
     sum = np.sum(predictions==labels)
     acc = (100.0 * sum) / batch_size
     return acc
@@ -64,9 +64,12 @@ batch_size = 20         # the number of training images in a single iteration
 test_batch_size = 50   # used to calculate test predictions over many iterations to avoid memory issues
 patch_size = 5          # convolution filter size
 depth1 = 16             # number of filters in first conv layer
-depth2 = 32             # number of filters in second conv layer
-depth3 = 64             # number of filters in third conv layer
-num_hidden1 = 33600      # the size of the unrolled vector after convolution
+depth2 = 16             # number of filters in second conv layer
+depth3 = 32             # number of filters in third conv layer
+depth4 = 32             # number of filters in first conv layer
+depth5 = 64             # number of filters in second conv layer
+depth6 = 64             # number of filters in third conv layer
+num_hidden1 = 28000      # the size of the unrolled vector after convolution
 num_hidden2 = 512       # the size of the hidden neurons in fully connected layer
 num_hidden3 = 256       # the size of the hidden neurons in fully connected layer
 # regularization_lambda=4e-4
@@ -117,6 +120,15 @@ with graph.as_default():
     conv3_weights = get_conv_weight('conv3_weights', [patch_size, patch_size, depth2, depth3])
     conv3_biases = get_bias_variable("conv3_bias",[depth3])
 
+    conv4_weights = get_conv_weight('conv4_weights', [patch_size, patch_size, depth3, depth4])
+    conv4_biases = get_bias_variable("conv4_bias",[depth4])
+
+    conv5_weights = get_conv_weight('conv5_weights', [patch_size, patch_size, depth4, depth5])
+    conv5_biases = get_bias_variable("conv5_bias",[depth5])
+
+    conv6_weights = get_conv_weight('conv6_weights', [patch_size, patch_size, depth5, depth6])
+    conv6_biases = get_bias_variable("conv6_bias",[depth6])
+
     # genre classifier
 
     hidden1_weights_c1 = get_fully_connected_weight('hidden1_weights', [num_hidden1, num_hidden2])
@@ -150,12 +162,19 @@ with graph.as_default():
 
     # Model.
     def model(data, keep_dropout_rate=1):
-        # first conv block
-        hidden = run_conv_layer(data, conv1_weights, conv1_biases)
+        hidden=data
+        #first conv block
+        hidden = run_conv_layer(hidden, conv1_weights, conv1_biases)
         # second conv block
         hidden = run_conv_layer(hidden, conv2_weights, conv2_biases)
         # third conv block
         hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
+
+        hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
+
+        hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
+
+        hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
 
         #flatten
         shape = hidden.get_shape().as_list()
@@ -184,7 +203,7 @@ with graph.as_default():
     # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
 
     global_step = tf.Variable(0)
-    learning_rate = tf.train.exponential_decay(0.001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
+    learning_rate = tf.train.exponential_decay(0.0001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
     # Optimizer.
     optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
     tvars = tf.trainable_variables()
@@ -206,7 +225,7 @@ with graph.as_default():
     one_prediction=model(tf_one_input)
     one_prediction=tf.identity(one_prediction, name="one_prediction")
 
-num_steps = 200001   #number of training iterations
+num_steps = 50001   #number of training iterations
 
 
 #used for drawing error and accuracy over time
@@ -232,6 +251,7 @@ with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) a
     print('Initialized')
     for step in range(num_steps):
         offset = (step * batch_size) % (train_size - batch_size)
+    #    offset=0
         batch_data = train_data[offset:(offset + batch_size), :, :, :]
         batch_labels = train_labels[offset:(offset+batch_size)]
 
@@ -275,7 +295,21 @@ with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) a
 
             ###############################Plot Results and save images##############################
 
+def plot_x_y(x, y, figure_name, x_axis_name, y_axis_name, ylim=[0, 100]):
+    plt.figure()
+    plt.plot(x, y)
+    plt.xlabel(x_axis_name)
+    plt.ylabel(y_axis_name)
+    axes = plt.gca()
+    axes.set_ylim(ylim)
+    # plt.legend([line_name],loc='upper left')
+    plt.savefig('./output_images/' + figure_name)
+    # plt.show()
 
+
+plot_x_y(training_loss_epoch, training_loss, 'training_loss.png', 'epoch', 'training batch loss', [0, 15])
+
+plot_x_y(train_accuracy_epoch, train_accuracy, 'training_acc.png', 'epoch', 'training batch accuracy')
 
 print('Test accuracy: %.1f%%' % test_accuracy)
 
