@@ -72,8 +72,7 @@ depth6 = 64             # number of filters in third conv layer
 num_hidden1 = 28000      # the size of the unrolled vector after convolution
 num_hidden2 = 512       # the size of the hidden neurons in fully connected layer
 num_hidden3 = 256       # the size of the hidden neurons in fully connected layer
-# regularization_lambda=4e-4
-
+regularization_lambda=4e-2
 
 graph = tf.Graph()
 
@@ -163,18 +162,18 @@ with graph.as_default():
     # Model.
     def model(data, keep_dropout_rate=1):
         hidden=data
-        #first conv block
-        hidden = run_conv_layer(hidden, conv1_weights, conv1_biases)
-        # second conv block
-        hidden = run_conv_layer(hidden, conv2_weights, conv2_biases)
-        # third conv block
-        hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
-
-        hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
-
-        hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
-
-        hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
+        # #first conv block
+        # hidden = run_conv_layer(hidden, conv1_weights, conv1_biases)
+        # # second conv block
+        # hidden = run_conv_layer(hidden, conv2_weights, conv2_biases)
+        # # third conv block
+        # hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
 
         #flatten
         shape = hidden.get_shape().as_list()
@@ -190,14 +189,14 @@ with graph.as_default():
 
 
     # Training computation.
-    logits = model(tf_train_dataset, 0.7)
+    logits = model(tf_train_dataset, 0.5)
 
-    # regularizers=regularization_lambda*(tf.nn.l2_loss(hidden1_weights) + tf.nn.l2_loss(hidden1_biases))+regularization_lambda*(tf.nn.l2_loss(hidden2_weights) + tf.nn.l2_loss(hidden2_biases))+regularization_lambda*(tf.nn.l2_loss(hidden3_weights) + tf.nn.l2_loss(hidden3_biases))
+    regularizers=0#regularization_lambda*(tf.nn.l2_loss(hidden1_weights_c1) + tf.nn.l2_loss(hidden1_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden2_weights_c1) + tf.nn.l2_loss(hidden2_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden3_weights_c1) + tf.nn.l2_loss(hidden3_biases_c1))
 
    #sum loss of different classifiers
 
     loss =  tf.reduce_mean(
-            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))  # +regularizers
+            tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))  +regularizers
 
     # tf.train.exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
     # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
@@ -220,12 +219,12 @@ with graph.as_default():
     train_prediction= logits
 
 
-    test_prediction=model(tf_test_dataset)
+    test_prediction=tf.nn.softmax(model(tf_test_dataset))
 
-    one_prediction=model(tf_one_input)
+    one_prediction=tf.nn.softmax(model(tf_one_input))
     one_prediction=tf.identity(one_prediction, name="one_prediction")
 
-num_steps = 50001   #number of training iterations
+num_steps = 6000   #number of training iterations
 
 
 #used for drawing error and accuracy over time
@@ -238,7 +237,7 @@ train_accuracy_epoch = []
 valid_accuracy = []
 valid_accuracy_epoch = []
 
-test_prediction = []
+
 
 test_accuracy=0
 
@@ -282,13 +281,13 @@ with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) a
         batch_data = test_data[offset:(offset + test_batch_size), :, :, :]
         feed_dict = {tf_test_dataset: batch_data}
         predictions= session.run(
-            [test_prediction], feed_dict=feed_dict)
+            test_prediction, feed_dict=feed_dict)
 
-        test_pred[offset:offset + test_batch_size] = predictions
+        test_pred[offset:offset + test_batch_size,:] = predictions
 
     # calculate test accuracy and save the model
 
-    test_accuracy, test_predictions = accuracy(np.argmax(test_pred,axis=1), test_labels)
+    test_accuracy = accuracy(np.argmax(test_pred,axis=1), test_labels)
     writer.close()
     saver.save(session, "./saved_model/model.ckpt")
 
