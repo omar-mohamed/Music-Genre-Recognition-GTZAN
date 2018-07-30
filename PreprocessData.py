@@ -54,13 +54,27 @@ librosa.display.specshow(log_power,x_axis='time',y_axis='log')
 plt.colorbar()
 
 mfcc=librosa.feature.mfcc(y=y,sr=sr)
-
+rmse=librosa.feature.rmse(y=y)
+cent = librosa.feature.spectral_centroid(y=y, sr=sr)
+spec_bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+chroma_stft=librosa.feature.chroma_stft(y=y, sr=sr)
+chroma_cens = librosa.feature.chroma_cens(y=y, sr=sr)
+chroma_cq = librosa.feature.chroma_cqt(y=y, sr=sr)
+Stft = np.abs(librosa.stft(y))
+contrast = librosa.feature.spectral_contrast(S=Stft, sr=sr)
 print(mfcc)
 
 def read_data(directory='./genres'):
     all_data_mfcc=np.zeros((1000,20,1400),dtype=float)
     all_data_spectrogram=np.zeros((1000,20,1400),dtype=float)
     all_data_beats=np.zeros((1000,1,1400),dtype=float)
+    all_data_contrast = np.zeros((1000,7, 1400), dtype=float)
+    all_data_cq = np.zeros((1000,12, 1400), dtype=float)
+    all_data_cens = np.zeros((1000,12, 1400), dtype=float)
+    all_data_stft = np.zeros((1000,12, 1400), dtype=float)
+    all_data_centroid = np.zeros((1000,1, 1400), dtype=float)
+    all_data_bandwidth = np.zeros((1000,1, 1400), dtype=float)
+    all_data_rmse = np.zeros((1000,1, 1400), dtype=float)
 
     all_labels=np.zeros(1000)
     label_index=0
@@ -73,15 +87,43 @@ def read_data(directory='./genres'):
                     mfcc = librosa.feature.mfcc(y=y, sr=sr)
                     S = librosa.feature.melspectrogram(y=y, sr=sr, n_mels=20, fmax=1400)
                     tempo, beats = librosa.beat.beat_track(y=y, sr=sr)
+
+                    rmse = librosa.feature.rmse(y=y)
+                    cent = librosa.feature.spectral_centroid(y=y, sr=sr)
+                    spec_bw = librosa.feature.spectral_bandwidth(y=y, sr=sr)
+                    chroma_stft = librosa.feature.chroma_stft(y=y, sr=sr)
+                    chroma_cens = librosa.feature.chroma_cens(y=y, sr=sr)
+                    chroma_cq = librosa.feature.chroma_cqt(y=y, sr=sr)
+                    Stft = np.abs(librosa.stft(y))
+                    contrast = librosa.feature.spectral_contrast(S=Stft, sr=sr)
+
                     all_data_spectrogram[image_index,:,0:S.shape[1]]=S
                     all_data_mfcc[image_index,:,0:mfcc.shape[1]]=mfcc
                     all_data_beats[image_index,:,0:beats.shape[0]]=beats
                     all_data_beats[image_index, :, beats.shape[0]+1] = tempo
+
+                    all_data_rmse[image_index,:,0:rmse.shape[1]]=rmse
+                    all_data_centroid[image_index,:,0:cent.shape[1]]=cent
+                    all_data_bandwidth[image_index,:,0:spec_bw.shape[1]]=spec_bw
+                    all_data_stft[image_index,:,0:chroma_stft.shape[1]]=chroma_stft
+                    all_data_cens[image_index,:,0:chroma_cens.shape[1]]=chroma_cens
+                    all_data_cq[image_index,:,0:chroma_cq.shape[1]]=chroma_cq
+                    all_data_contrast[image_index,:,0:contrast.shape[1]]=contrast
+
+
+
                     all_labels[image_index]=label_index
                     image_index=image_index+1
             label_index=label_index+1
     all_data=np.concatenate((all_data_mfcc,all_data_spectrogram),axis=1)
     all_data=np.concatenate((all_data,all_data_beats),axis=1)
+    all_data = np.concatenate((all_data, all_data_rmse), axis=1)
+    all_data = np.concatenate((all_data, all_data_centroid), axis=1)
+    all_data = np.concatenate((all_data, all_data_bandwidth), axis=1)
+    all_data = np.concatenate((all_data, all_data_cens), axis=1)
+    all_data = np.concatenate((all_data, all_data_stft), axis=1)
+    all_data = np.concatenate((all_data, all_data_cq), axis=1)
+    all_data = np.concatenate((all_data, all_data_contrast), axis=1)
 
     return all_data,all_labels
 
@@ -142,7 +184,7 @@ def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
 train_set,train_labels,test_set,test_labels=split_data(all_data,all_labels)
 
 
-pickle_file = 'dataset_normalized_beats.pickle'
+pickle_file = 'dataset_normalized_all.pickle'
 
 try:
     f = open(pickle_file, 'wb')

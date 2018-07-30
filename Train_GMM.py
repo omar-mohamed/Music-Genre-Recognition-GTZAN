@@ -12,8 +12,10 @@ import random
 # from tensorflow.python.client import device_lib
 # print (device_lib.list_local_devices())
 
+
 ##################load data#####################
 from sklearn.decomposition import PCA
+from sklearn.mixture import GMM
 from sklearn.svm import LinearSVC, SVC
 
 all_data = pickle.load(open('dataset_normalized_multiple.pickle', 'rb'))
@@ -25,9 +27,6 @@ test_labels = all_data['test_labels']
 
 del all_data
 
-#################Load train and test data###################
-
-
 num_channels = 1  # grayscale
 image_width = 41
 image_height = 1400
@@ -36,7 +35,6 @@ def reformat(dataset):
     dataset = dataset.reshape(
         (-1, image_width*image_height)).astype(np.float32)
     return dataset
-
 
 
 train_data = reformat(train_data)
@@ -51,12 +49,6 @@ test_size = test_data.shape[0]
 train_size = train_data.shape[0]
 
 
-# clf = svm.LinearSVC()
-# clf.fit(train_data, train_labels)
-# LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
-#      intercept_scaling=1, loss='squared_hinge', max_iter=1000,
-#      multi_class='ovr', penalty='l2', random_state=None, tol=0.0001,
-#      verbose=0)
 
 pca=PCA(copy=True, iterated_power='auto', n_components=1000, random_state=None,
   svd_solver='auto', tol=0.0, whiten=False)
@@ -67,26 +59,37 @@ train_data=pca.transform(train_data)
 
 test_data=pca.transform(test_data)
 
-clf = SVC(C=200, cache_size=200, class_weight=None, coef0=0.0,
-  decision_function_shape=None, degree=3, gamma=0.0001, kernel='rbf',
-  max_iter=-1, probability=False, random_state=None, shrinking=True,
-  tol=0.001, verbose=False)
-clf.fit(train_data, train_labels)
 
+n_classes = 10
 
-
+# Try GMMs using different types of covariances.
+classifiers = dict((covar_type, GMM(n_components=n_classes,
+                    covariance_type=covar_type, init_params='wc', n_iter=20))
+                   for covar_type in ['full'])
 
 
 def accuracy(predictions, labels):
     batch_size = predictions.shape[0]
-    sum = np.sum(predictions==labels)
+    sum = np.sum(predictions == labels)
     acc = (100.0 * sum) / batch_size
     return acc
 
-train_predictions=clf.predict(train_data)
+for index, (name, classifier) in enumerate(classifiers.items()):
+    # Since we have class labels for the training data, we can
+    # initialize the GMM parameters in a supervised manner.
+    classifier.means_ = np.array([train_data[train_labels == i].mean(axis=0)
+                                  for i in range(n_classes)])
 
-print("Train Accuracy: %.1f%%"%accuracy(train_predictions,train_labels))
 
-test_predictions=clf.predict(test_data)
+    # Train the other parameters using the EM algorithm.
+    classifier.fit(train_data)
 
-print("Test Accuracy: %.1f%%"%accuracy(test_predictions,test_labels))
+
+
+    train_predictions = classifier.predict(train_data)
+
+    print("Train Accuracy: %.1f%%" % accuracy(train_predictions, train_labels))
+
+    test_predictions = classifier.predict(test_data)
+
+    print("Test Accuracy: %.1f%%" % accuracy(test_predictions, test_labels))
