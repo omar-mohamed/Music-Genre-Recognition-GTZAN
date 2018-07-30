@@ -96,12 +96,12 @@ def read_data(directory='./genres'):
                     chroma_cq = librosa.feature.chroma_cqt(y=y, sr=sr)
                     Stft = np.abs(librosa.stft(y))
                     contrast = librosa.feature.spectral_contrast(S=Stft, sr=sr)
-
+                    #
                     all_data_spectrogram[image_index,:,0:S.shape[1]]=S
                     all_data_mfcc[image_index,:,0:mfcc.shape[1]]=mfcc
                     all_data_beats[image_index,:,0:beats.shape[0]]=beats
                     all_data_beats[image_index, :, beats.shape[0]+1] = tempo
-
+                    #
                     all_data_rmse[image_index,:,0:rmse.shape[1]]=rmse
                     all_data_centroid[image_index,:,0:cent.shape[1]]=cent
                     all_data_bandwidth[image_index,:,0:spec_bw.shape[1]]=spec_bw
@@ -109,8 +109,6 @@ def read_data(directory='./genres'):
                     all_data_cens[image_index,:,0:chroma_cens.shape[1]]=chroma_cens
                     all_data_cq[image_index,:,0:chroma_cq.shape[1]]=chroma_cq
                     all_data_contrast[image_index,:,0:contrast.shape[1]]=contrast
-
-
 
                     all_labels[image_index]=label_index
                     image_index=image_index+1
@@ -130,13 +128,16 @@ def read_data(directory='./genres'):
 all_data,all_labels=read_data()
 
 def normalize(x):
-    xvar, xavg = x.var(axis=0), x.mean(axis=0)
-    print(xavg)
-    x = (x - xavg)
-    xvar_0=xvar==0
-    if(isinstance(xvar_0,bool)==False):
-        xvar[xvar_0]=1
-    x=x/xvar
+    # xvar, xavg = x.std(axis=0), x.mean(axis=0)
+    xmin, xmax = x.min(axis=0), x.max(axis=0)
+    # print(xavg)
+    x = (x - xmin)
+    diff=xmax-xmin
+    # xvar_0=xvar==0
+    diff_0 = diff == 0
+    if(isinstance(diff_0,bool)==False):
+        diff[diff_0]=1
+    x=x/diff
     print("After normalization:")
     xmin, xmax = x.min(), x.max()
     print(xmin)

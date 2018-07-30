@@ -16,7 +16,7 @@ import random
 from sklearn.decomposition import PCA
 from sklearn.svm import LinearSVC, SVC
 
-all_data = pickle.load(open('dataset_normalized_multiple.pickle', 'rb'))
+all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -29,7 +29,7 @@ del all_data
 
 
 num_channels = 1  # grayscale
-image_width = 41
+image_width = 87
 image_height = 1400
 
 def reformat(dataset):
@@ -51,21 +51,39 @@ test_size = test_data.shape[0]
 train_size = train_data.shape[0]
 
 
-# clf = svm.LinearSVC()
-# clf.fit(train_data, train_labels)
-# LinearSVC(C=1.0, class_weight=None, dual=True, fit_intercept=True,
-#      intercept_scaling=1, loss='squared_hinge', max_iter=1000,
-#      multi_class='ovr', penalty='l2', random_state=None, tol=0.0001,
-#      verbose=0)
 
-pca=PCA(copy=True, iterated_power='auto', n_components=1000, random_state=None,
-  svd_solver='auto', tol=0.0, whiten=False)
+# pca=PCA(copy=True, iterated_power='auto', n_components=5000, random_state=None,
+#   svd_solver='auto', tol=0.0, whiten=False)
+#
+# pca.fit(train_data)
+#
+# train_data=pca.transform(train_data)
+#
+# test_data=pca.transform(test_data)
 
-pca.fit(train_data)
+# def normalize(x):
+#     # xvar, xavg = x.std(axis=0), x.mean(axis=0)
+#     xmin, xmax = x.min(axis=0), x.max(axis=0)
+#     # print(xavg)
+#     x = (x - xmin)
+#     diff=xmax-xmin
+#     # xvar_0=xvar==0
+#     diff_0 = diff == 0
+#     if(isinstance(diff_0,bool)==False):
+#         diff[diff_0]=1
+#     x=x/diff
+#     print("After normalization:")
+#     xmin, xmax = x.min(), x.max()
+#     print(xmin)
+#     print(xmax)
+#
+#     return x
+#
+# train_data=normalize(train_data)
+# test_data=normalize(test_data)
 
-train_data=pca.transform(train_data)
 
-test_data=pca.transform(test_data)
+ma,mi=train_data.max(),train_data.min()
 
 clf = SVC(C=200, cache_size=200, class_weight=None, coef0=0.0,
   decision_function_shape=None, degree=3, gamma=0.0001, kernel='rbf',
