@@ -12,8 +12,9 @@ import random
 # print (device_lib.list_local_devices())
 
 ##################load data#####################
+from sklearn.decomposition import PCA
 
-all_data = pickle.load(open('dataset_normalized.pickle', 'rb'))
+all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -25,13 +26,19 @@ del all_data
 #################Load train and test data###################
 
 
+start_index=0
+end_index=87
+train_data=train_data[:,start_index:end_index,:]
+test_data=test_data[:,start_index:end_index,:]
+
+
 num_channels = 1  # grayscale
-image_width = 20
-image_height = 1400
+image_width = train_data.shape[1]
+image_height = train_data.shape[2]
 
 def reformat(dataset):
     dataset = dataset.reshape(
-        (-1, image_width, image_height, num_channels)).astype(np.float32)
+        (-1, image_width*image_height)).astype(np.float32)
     return dataset
 
 
@@ -46,6 +53,16 @@ print('test_data shape is : %s' % (test_data.shape,))
 test_size = test_data.shape[0]
 train_size = train_data.shape[0]
 
+
+pca=PCA(copy=True, iterated_power='auto', n_components=750, random_state=None,
+  svd_solver='auto', tol=0.0, whiten=False)
+
+pca.fit(train_data)
+
+train_data=pca.transform(train_data)
+
+test_data=pca.transform(test_data)
+
 ########################Training###########################
 
 num_classifiers = 1
@@ -58,44 +75,39 @@ def accuracy(predictions, labels):
     return acc
 
 
+vector_size=train_data.shape[1]
 
 genres_labels = 10      # the labels' length for a genres classifier
-batch_size = 20         # the number of training images in a single iteration
+batch_size = 50         # the number of training images in a single iteration
 test_batch_size = 50   # used to calculate test predictions over many iterations to avoid memory issues
-patch_size = 5          # convolution filter size
-depth1 = 16             # number of filters in first conv layer
-depth2 = 16             # number of filters in second conv layer
-depth3 = 32             # number of filters in third conv layer
-depth4 = 32             # number of filters in first conv layer
-depth5 = 64             # number of filters in second conv layer
-depth6 = 64             # number of filters in third conv layer
-num_hidden1 = 28000      # the size of the unrolled vector after convolution
-num_hidden2 = 512       # the size of the hidden neurons in fully connected layer
-num_hidden3 = 256       # the size of the hidden neurons in fully connected layer
+
+num_hidden1 = vector_size      # the size of the unrolled vector after convolution
+num_hidden2 = 128       # the size of the hidden neurons in fully connected layer
+num_hidden3 = 128       # the size of the hidden neurons in fully connected layer
+num_hidden4 = 128       # the size of the hidden neurons in fully connected layer
+num_hidden5 = 128       # the size of the hidden neurons in fully connected layer
+num_hidden6 = 128       # the size of the hidden neurons in fully connected layer
+
 regularization_lambda=4e-2
+
 
 graph = tf.Graph()
 
 with graph.as_default():
     # Input data.
     tf_train_dataset = tf.placeholder(
-        tf.float32, shape=(batch_size, image_width, image_height, num_channels), name="train_dataset")
+        tf.float32, shape=(batch_size, vector_size), name="train_dataset")
 
     #labels
     tf_train_labels = tf.placeholder(tf.int32, shape=(batch_size), name="train_labels")
 
 
-    tf_test_dataset = tf.placeholder(tf.float32, shape=(test_batch_size, image_width, image_height, num_channels), name="test_labels")
+    tf_test_dataset = tf.placeholder(tf.float32, shape=(test_batch_size, vector_size), name="test_set")
 
 
     #to take one image and classify it (used in gui interface)
-    tf_one_input = tf.placeholder(tf.float32, shape=(1, image_width, image_height, num_channels),name='one_input_placeholder')
+    tf_one_input = tf.placeholder(tf.float32, shape=(1, vector_size),name='one_input_placeholder')
 
-
-
-    def get_conv_weight(name, shape):
-        return tf.get_variable(name, shape=shape,
-                               initializer=tf.contrib.layers.xavier_initializer_conv2d())
 
 
     def get_bias_variable(name,shape):
@@ -108,25 +120,6 @@ with graph.as_default():
         return weights
 
 
-    # Variables.
-
-    conv1_weights = get_conv_weight('conv1_weights', [patch_size, patch_size, num_channels, depth1])
-    conv1_biases = get_bias_variable("conv1_bias",[depth1])
-
-    conv2_weights = get_conv_weight('conv2_weights', [patch_size, patch_size, depth1, depth2])
-    conv2_biases = get_bias_variable("conv2_bias",[depth2])
-
-    conv3_weights = get_conv_weight('conv3_weights', [patch_size, patch_size, depth2, depth3])
-    conv3_biases = get_bias_variable("conv3_bias",[depth3])
-
-    conv4_weights = get_conv_weight('conv4_weights', [patch_size, patch_size, depth3, depth4])
-    conv4_biases = get_bias_variable("conv4_bias",[depth4])
-
-    conv5_weights = get_conv_weight('conv5_weights', [patch_size, patch_size, depth4, depth5])
-    conv5_biases = get_bias_variable("conv5_bias",[depth5])
-
-    conv6_weights = get_conv_weight('conv6_weights', [patch_size, patch_size, depth5, depth6])
-    conv6_biases = get_bias_variable("conv6_bias",[depth6])
 
     # genre classifier
 
@@ -136,56 +129,48 @@ with graph.as_default():
     hidden2_weights_c1 = get_fully_connected_weight('hidden2_weights', [num_hidden2, num_hidden3])
     hidden2_biases_c1 = get_bias_variable("hidden2_bias",[num_hidden3])
 
-    hidden3_weights_c1 = get_fully_connected_weight('hidden3_weights', [num_hidden3, genres_labels])
-    hidden3_biases_c1 = get_bias_variable("hidden3_bias",[genres_labels])
+    hidden3_weights_c1 = get_fully_connected_weight('hidden3_weights', [num_hidden3, num_hidden4])
+    hidden3_biases_c1 = get_bias_variable("hidden3_bias",[num_hidden4])
 
+    hidden4_weights_c1 = get_fully_connected_weight('hidden4_weights', [num_hidden4, num_hidden5])
+    hidden4_biases_c1 = get_bias_variable("hidden4_bias",[num_hidden6])
 
+    hidden5_weights_c1 = get_fully_connected_weight('hidden5_weights', [num_hidden5, num_hidden6])
+    hidden5_biases_c1 = get_bias_variable("hidden5_bias",[num_hidden6])
 
-    def get_logits(image_vector, hidden1_weights, hidden1_biases, hidden2_weights, hidden2_biases, hidden3_weights,
-                   hidden3_biases, keep_dropout_rate=1):
-        hidden = tf.nn.relu(tf.matmul(image_vector, hidden1_weights) + hidden1_biases)
+    hidden6_weights_c1 = get_fully_connected_weight('hidden6_weights', [num_hidden6, genres_labels])
+    hidden6_biases_c1 = get_bias_variable("hidden6_bias",[genres_labels])
+
+    def run_hidden_layer(image_vector, hidden_weights, hidden_biases, keep_dropout_rate=1,use_relu=True):
+        hidden = tf.matmul(image_vector, hidden_weights) + hidden_biases
+        if use_relu:
+            hidden=tf.nn.relu(hidden)
         if keep_dropout_rate < 1:
             hidden = tf.nn.dropout(hidden, keep_dropout_rate)
-        hidden = tf.nn.relu(tf.matmul(hidden, hidden2_weights) + hidden2_biases)
-        if keep_dropout_rate < 1:
-            hidden = tf.nn.dropout(hidden, keep_dropout_rate)
-        return tf.matmul(hidden, hidden3_weights) + hidden3_biases
+
+        return hidden
 
 
-    def run_conv_layer(input, conv_weights, conv_biases):
-        conv = tf.nn.conv2d(input, conv_weights, [1, 1, 1, 1], padding='SAME')
-        conv = tf.nn.max_pool(value=conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        conv = tf.nn.local_response_normalization(conv)
-        return tf.nn.relu(conv + conv_biases)
+
 
 
     # Model.
     def model(data, keep_dropout_rate=1):
         hidden=data
-        # #first conv block
-        # hidden = run_conv_layer(hidden, conv1_weights, conv1_biases)
-        # # second conv block
-        # hidden = run_conv_layer(hidden, conv2_weights, conv2_biases)
-        # # third conv block
-        # hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
-        #
-        # hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
-        #
-        # hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
-        #
-        # hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
 
-        #flatten
-        shape = hidden.get_shape().as_list()
-        reshape = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
+        hidden=run_hidden_layer(hidden,hidden1_weights_c1,hidden1_biases_c1,keep_dropout_rate,True)
 
-        #  classifier
-        logits = get_logits(reshape, hidden1_weights_c1, hidden1_biases_c1, hidden2_weights_c1, hidden2_biases_c1,
-                             hidden3_weights_c1, hidden3_biases_c1, keep_dropout_rate)
+        hidden=run_hidden_layer(hidden,hidden2_weights_c1,hidden2_biases_c1,keep_dropout_rate,True)
 
+        hidden = run_hidden_layer(hidden, hidden3_weights_c1, hidden3_biases_c1, keep_dropout_rate, True)
 
+        hidden = run_hidden_layer(hidden, hidden4_weights_c1, hidden4_biases_c1, keep_dropout_rate, True)
 
-        return logits
+        hidden = run_hidden_layer(hidden, hidden5_weights_c1, hidden5_biases_c1, keep_dropout_rate, True)
+
+        hidden=run_hidden_layer(hidden,hidden6_weights_c1,hidden6_biases_c1,1,False)
+
+        return hidden
 
 
     # Training computation.
@@ -224,7 +209,7 @@ with graph.as_default():
     one_prediction=tf.nn.softmax(model(tf_one_input))
     one_prediction=tf.identity(one_prediction, name="one_prediction")
 
-num_steps = 6000   #number of training iterations
+num_steps = 20000   #number of training iterations
 
 
 #used for drawing error and accuracy over time
@@ -251,7 +236,7 @@ with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) a
     for step in range(num_steps):
         offset = (step * batch_size) % (train_size - batch_size)
     #    offset=0
-        batch_data = train_data[offset:(offset + batch_size), :, :, :]
+        batch_data = train_data[offset:(offset + batch_size), :]
         batch_labels = train_labels[offset:(offset+batch_size)]
 
         feed_dict = {tf_train_dataset: batch_data, tf_train_labels: batch_labels}
@@ -278,7 +263,7 @@ with tf.Session(graph=graph, config=tf.ConfigProto(log_device_placement=True)) a
 
     for step in range(int(test_size / test_batch_size)):
         offset = (step * test_batch_size) % (test_size - test_batch_size)
-        batch_data = test_data[offset:(offset + test_batch_size), :, :, :]
+        batch_data = test_data[offset:(offset + test_batch_size), :]
         feed_dict = {tf_test_dataset: batch_data}
         predictions= session.run(
             test_prediction, feed_dict=feed_dict)

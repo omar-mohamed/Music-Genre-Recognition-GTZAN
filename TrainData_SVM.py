@@ -27,10 +27,15 @@ del all_data
 
 #################Load train and test data###################
 
+start_index=0
+end_index=87
+train_data=train_data[:,start_index:end_index,:]
+test_data=test_data[:,start_index:end_index,:]
+
 
 num_channels = 1  # grayscale
-image_width = 87
-image_height = 1400
+image_width = train_data.shape[1]
+image_height = train_data.shape[2]
 
 def reformat(dataset):
     dataset = dataset.reshape(
@@ -38,10 +43,8 @@ def reformat(dataset):
     return dataset
 
 
-
 train_data = reformat(train_data)
 test_data = reformat(test_data)
-
 
 print('train_data shape is : %s' % (train_data.shape,))
 print('test_data shape is : %s' % (test_data.shape,))
@@ -61,26 +64,6 @@ train_size = train_data.shape[0]
 #
 # test_data=pca.transform(test_data)
 
-# def normalize(x):
-#     # xvar, xavg = x.std(axis=0), x.mean(axis=0)
-#     xmin, xmax = x.min(axis=0), x.max(axis=0)
-#     # print(xavg)
-#     x = (x - xmin)
-#     diff=xmax-xmin
-#     # xvar_0=xvar==0
-#     diff_0 = diff == 0
-#     if(isinstance(diff_0,bool)==False):
-#         diff[diff_0]=1
-#     x=x/diff
-#     print("After normalization:")
-#     xmin, xmax = x.min(), x.max()
-#     print(xmin)
-#     print(xmax)
-#
-#     return x
-#
-# train_data=normalize(train_data)
-# test_data=normalize(test_data)
 
 
 ma,mi=train_data.max(),train_data.min()

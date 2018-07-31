@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 from sklearn.svm import LinearSVC, SVC
 
-all_data = pickle.load(open('dataset_normalized_multiple.pickle', 'rb'))
+all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -27,9 +27,16 @@ test_labels = all_data['test_labels']
 
 del all_data
 
+
+start_index=0
+end_index=87
+train_data=train_data[:,start_index:end_index,:]
+test_data=test_data[:,start_index:end_index,:]
+
+
 num_channels = 1  # grayscale
-image_width = 41
-image_height = 1400
+image_width = train_data.shape[1]
+image_height = train_data.shape[2]
 
 def reformat(dataset):
     dataset = dataset.reshape(
@@ -50,7 +57,7 @@ train_size = train_data.shape[0]
 
 
 
-pca=PCA(copy=True, iterated_power='auto', n_components=1000, random_state=None,
+pca=PCA(copy=True, iterated_power='auto', n_components=750, random_state=None,
   svd_solver='auto', tol=0.0, whiten=False)
 
 pca.fit(train_data)
@@ -58,7 +65,6 @@ pca.fit(train_data)
 train_data=pca.transform(train_data)
 
 test_data=pca.transform(test_data)
-
 
 n_classes = 10
 
