@@ -23,24 +23,6 @@ import librosa.display
 #http://opihi.cs.uvic.ca/sound/genres.tar.gz
 #GTZAN genre collection.
 
-# rand=np.random.randint(11, size=(1000, 41,1400))
-
-# def normalize_2(x):
-#     xvar, xavg = x.var(axis=0), x.mean(axis=0)
-#     print(xavg)
-#     x = (x - xavg)
-#     xvar_0=xvar==0
-#     if(xvar_0!=False):
-#         xvar[xvar_0]=1
-#     x=x/xvar
-#     print("After normalization:")
-#     xmin, xmax = x.min(), x.max()
-#     print(xmin)
-#     print(xmax)
-#
-#     return x
-#
-# normalize_2(np.array([0,0,0,0,0,0,0,0,-20]))
 
 y,sr=librosa.load('./genres/blues/blues.00001.au')
 
@@ -127,28 +109,31 @@ def read_data(directory='./genres'):
 
 all_data,all_labels=read_data()
 
-def normalize(x):
-    # xvar, xavg = x.std(axis=0), x.mean(axis=0)
-    xmin, xmax = x.min(axis=0), x.max(axis=0)
-    # print(xavg)
-    x = (x - xmin)
-    diff=xmax-xmin
-    # xvar_0=xvar==0
-    diff_0 = diff == 0
-    if(isinstance(diff_0,bool)==False):
-        diff[diff_0]=1
-    x=x/diff
-    print("After normalization:")
-    xmin, xmax = x.min(), x.max()
-    print(xmin)
-    print(xmax)
 
-    return x
+def standarize(x):
+    mean=x.mean(axis=0)
+    std=x.std(axis=0)
+    diff=x-mean
+    z_scores_np = np.divide(diff, std, out=np.zeros_like(diff), where=std!=0)
+
+    print('Mean after standarization: %.1f%%' % z_scores_np.mean())
+
+    print('std after standarization: %.1f%%' % z_scores_np.std())
+
+    return z_scores_np
 
 
-print(all_data.shape)
+def min_max_normalize(x):
+    min=x.min(axis=0)
+    max=x.max(axis=0)
+    diff=x-min
+    range=max-min
+    np_minmax = np.divide(diff, range, out=np.zeros_like(diff), where=range!=0)
+    print('Min after normalization: %.1f%%' % np_minmax.min())
 
-all_data=normalize(all_data)
+    print('Max after normalization: %.1f%%' % np_minmax.max())
+    return np_minmax
+
 
 print(all_data.shape)
 
@@ -161,10 +146,17 @@ def randomize(dataset, labels):
 
 all_data,all_labels=randomize(all_data,all_labels)
 
+all_data_standard=standarize(all_data)
 
-def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
+all_data_normalized=min_max_normalize(all_data_standard)
+
+def split_data(dataset,labels,num_classes=10,test_images_for_class=10):
     test_counter=np.zeros(num_classes)
-    test_set=np.zeros((num_classes*test_images_for_class,dataset.shape[1],dataset.shape[2]),dtype=float)
+    if dataset.ndim==3:
+      test_set=np.zeros((num_classes*test_images_for_class,dataset.shape[1],dataset.shape[2]),dtype=float)
+    elif dataset.ndim==2:
+        test_set = np.zeros((num_classes * test_images_for_class, dataset.shape[1]), dtype=float)
+
     test_labels=np.zeros(num_classes*test_images_for_class)
     deleted_index=[]
     test_index=0
@@ -182,18 +174,25 @@ def split_data(dataset,labels,num_classes=10,test_images_for_class=25):
 
     return dataset,labels,test_set,test_labels
 
-train_set,train_labels,test_set,test_labels=split_data(all_data,all_labels)
 
 
-pickle_file = 'dataset_normalized_all.pickle'
+
+    return dataset,labels,test_set,test_labels
+
+train_set_std,train_labels_std,test_set_std,test_labels_std=split_data(all_data_standard,all_labels)
+
+train_set_normal,train_labels_normal,test_set_normal,test_labels_normal=split_data(all_data_normalized,all_labels)
+
+
+pickle_file = 'dataset_normalized_all_10.pickle'
 
 try:
     f = open(pickle_file, 'wb')
     save = {
-        'train_dataset': train_set,
-        'train_labels': train_labels,
-        'test_dataset': test_set,
-        'test_labels': test_labels,
+        'train_dataset': train_set_normal,
+        'train_labels': train_labels_normal,
+        'test_dataset': test_set_normal,
+        'test_labels': test_labels_normal,
     }
     pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
     f.close()
@@ -202,3 +201,19 @@ except Exception as e:
     print('Unable to save data to', pickle_file, ':', e)
     raise
 
+pickle_file = 'dataset_standarized_all_10.pickle'
+
+try:
+    f = open(pickle_file, 'wb')
+    save = {
+        'train_dataset': train_set_std,
+        'train_labels': train_labels_std,
+        'test_dataset': test_set_std,
+        'test_labels': test_labels_std,
+    }
+    pickle.dump(save, f, pickle.HIGHEST_PROTOCOL)
+    f.close()
+    print("Done")
+except Exception as e:
+    print('Unable to save data to', pickle_file, ':', e)
+    raise

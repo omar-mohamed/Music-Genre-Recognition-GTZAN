@@ -16,7 +16,7 @@ import random
 from sklearn.decomposition import PCA
 from sklearn.svm import LinearSVC, SVC
 
-all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
+all_data = pickle.load(open('dataset_standarized_all_10.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -45,31 +45,31 @@ def reformat(dataset):
 
 train_data = reformat(train_data)
 test_data = reformat(test_data)
-
-print('train_data shape is : %s' % (train_data.shape,))
-print('test_data shape is : %s' % (test_data.shape,))
-
-
-test_size = test_data.shape[0]
-train_size = train_data.shape[0]
-
-
-
-# pca=PCA(copy=True, iterated_power='auto', n_components=5000, random_state=None,
-#   svd_solver='auto', tol=0.0, whiten=False)
 #
-# pca.fit(train_data)
+# print('train_data shape is : %s' % (train_data.shape,))
+# print('test_data shape is : %s' % (test_data.shape,))
 #
-# train_data=pca.transform(train_data)
 #
-# test_data=pca.transform(test_data)
+# test_size = test_data.shape[0]
+# train_size = train_data.shape[0]
+
+
+
+pca=PCA(copy=True, iterated_power='auto', n_components=900, random_state=None,
+  svd_solver='auto', tol=0.0, whiten=False)
+
+pca.fit(train_data)
+
+train_data=pca.transform(train_data)
+
+test_data=pca.transform(test_data)
 
 
 
 ma,mi=train_data.max(),train_data.min()
 
-clf = SVC(C=200, cache_size=200, class_weight=None, coef0=0.0,
-  decision_function_shape=None, degree=3, gamma=0.0001, kernel='rbf',
+clf = SVC(C=1, cache_size=200, class_weight=None, coef0=100.0,
+  decision_function_shape=None, degree=2, gamma=0.0001, kernel='poly',
   max_iter=-1, probability=False, random_state=None, shrinking=True,
   tol=0.001, verbose=False)
 clf.fit(train_data, train_labels)

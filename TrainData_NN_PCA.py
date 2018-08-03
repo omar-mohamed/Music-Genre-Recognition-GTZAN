@@ -14,7 +14,7 @@ import random
 ##################load data#####################
 from sklearn.decomposition import PCA
 
-all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
+all_data = pickle.load(open('dataset_standarized_all_10.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -54,7 +54,7 @@ test_size = test_data.shape[0]
 train_size = train_data.shape[0]
 
 
-pca=PCA(copy=True, iterated_power='auto', n_components=750, random_state=None,
+pca=PCA(copy=True, iterated_power='auto', n_components=900, random_state=None,
   svd_solver='auto', tol=0.0, whiten=False)
 
 pca.fit(train_data)
@@ -160,13 +160,13 @@ with graph.as_default():
 
         hidden=run_hidden_layer(hidden,hidden1_weights_c1,hidden1_biases_c1,keep_dropout_rate,True)
 
-        hidden=run_hidden_layer(hidden,hidden2_weights_c1,hidden2_biases_c1,keep_dropout_rate,True)
-
-        hidden = run_hidden_layer(hidden, hidden3_weights_c1, hidden3_biases_c1, keep_dropout_rate, True)
-
-        hidden = run_hidden_layer(hidden, hidden4_weights_c1, hidden4_biases_c1, keep_dropout_rate, True)
-
-        hidden = run_hidden_layer(hidden, hidden5_weights_c1, hidden5_biases_c1, keep_dropout_rate, True)
+        # hidden=run_hidden_layer(hidden,hidden2_weights_c1,hidden2_biases_c1,keep_dropout_rate,True)
+        #
+        # hidden = run_hidden_layer(hidden, hidden3_weights_c1, hidden3_biases_c1, keep_dropout_rate, True)
+        #
+        # hidden = run_hidden_layer(hidden, hidden4_weights_c1, hidden4_biases_c1, keep_dropout_rate, True)
+        #
+        # hidden = run_hidden_layer(hidden, hidden5_weights_c1, hidden5_biases_c1, keep_dropout_rate, True)
 
         hidden=run_hidden_layer(hidden,hidden6_weights_c1,hidden6_biases_c1,1,False)
 

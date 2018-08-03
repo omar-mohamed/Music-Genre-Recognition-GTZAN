@@ -18,7 +18,7 @@ from sklearn.decomposition import PCA
 from sklearn.mixture import GMM
 from sklearn.svm import LinearSVC, SVC
 
-all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
+all_data = pickle.load(open('dataset_standarized_all_10.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -28,10 +28,10 @@ test_labels = all_data['test_labels']
 del all_data
 
 
-start_index=0
-end_index=87
-train_data=train_data[:,start_index:end_index,:]
-test_data=test_data[:,start_index:end_index,:]
+# start_index=0
+# end_index=87
+# train_data=train_data[:,start_index:end_index,:]
+# test_data=test_data[:,start_index:end_index,:]
 
 
 num_channels = 1  # grayscale
@@ -57,7 +57,7 @@ train_size = train_data.shape[0]
 
 
 
-pca=PCA(copy=True, iterated_power='auto', n_components=750, random_state=None,
+pca=PCA(copy=True, iterated_power='auto', n_components=900, random_state=None,
   svd_solver='auto', tol=0.0, whiten=False)
 
 pca.fit(train_data)
@@ -70,7 +70,7 @@ n_classes = 10
 
 # Try GMMs using different types of covariances.
 classifiers = dict((covar_type, GMM(n_components=n_classes,
-                    covariance_type=covar_type, init_params='wc', n_iter=20))
+                    covariance_type=covar_type, init_params='wc', n_iter=5))
                    for covar_type in ['full'])
 
 
