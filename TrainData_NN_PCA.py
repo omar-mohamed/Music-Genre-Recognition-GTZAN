@@ -78,17 +78,14 @@ def accuracy(predictions, labels):
 vector_size=train_data.shape[1]
 
 genres_labels = 10      # the labels' length for a genres classifier
-batch_size = 50         # the number of training images in a single iteration
+batch_size = 64         # the number of training images in a single iteration
 test_batch_size = 50   # used to calculate test predictions over many iterations to avoid memory issues
 
 num_hidden1 = vector_size      # the size of the unrolled vector after convolution
-num_hidden2 = 128       # the size of the hidden neurons in fully connected layer
-num_hidden3 = 128       # the size of the hidden neurons in fully connected layer
-num_hidden4 = 128       # the size of the hidden neurons in fully connected layer
-num_hidden5 = 128       # the size of the hidden neurons in fully connected layer
-num_hidden6 = 128       # the size of the hidden neurons in fully connected layer
+num_hidden2 = 64       # the size of the hidden neurons in fully connected layer
 
-regularization_lambda=4e-2
+
+regularization_lambda=4e-1
 
 
 graph = tf.Graph()
@@ -124,27 +121,25 @@ with graph.as_default():
     # genre classifier
 
     hidden1_weights_c1 = get_fully_connected_weight('hidden1_weights', [num_hidden1, num_hidden2])
-    hidden1_biases_c1 = get_bias_variable("hidden1_bias",[num_hidden2])
 
-    hidden2_weights_c1 = get_fully_connected_weight('hidden2_weights', [num_hidden2, num_hidden3])
-    hidden2_biases_c1 = get_bias_variable("hidden2_bias",[num_hidden3])
+    hidden2_weights_c1 = get_fully_connected_weight('hidden2_weights', [num_hidden2, genres_labels])
 
-    hidden3_weights_c1 = get_fully_connected_weight('hidden3_weights', [num_hidden3, num_hidden4])
-    hidden3_biases_c1 = get_bias_variable("hidden3_bias",[num_hidden4])
 
-    hidden4_weights_c1 = get_fully_connected_weight('hidden4_weights', [num_hidden4, num_hidden5])
-    hidden4_biases_c1 = get_bias_variable("hidden4_bias",[num_hidden6])
+    def run_hidden_layer(x, hidden_weights, keep_dropout_rate=1,use_relu=True,is_training=False):
+        hidden = tf.matmul(x, hidden_weights)
 
-    hidden5_weights_c1 = get_fully_connected_weight('hidden5_weights', [num_hidden5, num_hidden6])
-    hidden5_biases_c1 = get_bias_variable("hidden5_bias",[num_hidden6])
+        hidden = tf.layers.batch_normalization(
+            inputs=hidden,
+            axis=-1,
+            momentum=0.99,
+            epsilon=0.001,
+            center=True,
+            scale=True,
+            training=is_training
+        )
 
-    hidden6_weights_c1 = get_fully_connected_weight('hidden6_weights', [num_hidden6, genres_labels])
-    hidden6_biases_c1 = get_bias_variable("hidden6_bias",[genres_labels])
-
-    def run_hidden_layer(image_vector, hidden_weights, hidden_biases, keep_dropout_rate=1,use_relu=True):
-        hidden = tf.matmul(image_vector, hidden_weights) + hidden_biases
         if use_relu:
-            hidden=tf.nn.relu(hidden)
+            hidden=tf.nn.leaky_relu(hidden,0.2)
         if keep_dropout_rate < 1:
             hidden = tf.nn.dropout(hidden, keep_dropout_rate)
 
@@ -155,26 +150,19 @@ with graph.as_default():
 
 
     # Model.
-    def model(data, keep_dropout_rate=1):
+    def model(data, keep_dropout_rate=1,is_training=False):
         hidden=data
 
-        hidden=run_hidden_layer(hidden,hidden1_weights_c1,hidden1_biases_c1,keep_dropout_rate,True)
+        hidden=run_hidden_layer(hidden,hidden1_weights_c1,keep_dropout_rate,True,is_training)
 
-        # hidden=run_hidden_layer(hidden,hidden2_weights_c1,hidden2_biases_c1,keep_dropout_rate,True)
-        #
-        # hidden = run_hidden_layer(hidden, hidden3_weights_c1, hidden3_biases_c1, keep_dropout_rate, True)
-        #
-        # hidden = run_hidden_layer(hidden, hidden4_weights_c1, hidden4_biases_c1, keep_dropout_rate, True)
-        #
-        # hidden = run_hidden_layer(hidden, hidden5_weights_c1, hidden5_biases_c1, keep_dropout_rate, True)
 
-        hidden=run_hidden_layer(hidden,hidden6_weights_c1,hidden6_biases_c1,1,False)
+        hidden=run_hidden_layer(hidden,hidden2_weights_c1,1,False,is_training)
 
         return hidden
 
 
     # Training computation.
-    logits = model(tf_train_dataset, 0.5)
+    logits = model(tf_train_dataset, 0.7,True)
 
     regularizers=0#regularization_lambda*(tf.nn.l2_loss(hidden1_weights_c1) + tf.nn.l2_loss(hidden1_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden2_weights_c1) + tf.nn.l2_loss(hidden2_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden3_weights_c1) + tf.nn.l2_loss(hidden3_biases_c1))
 
@@ -183,19 +171,21 @@ with graph.as_default():
     loss =  tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))  +regularizers
 
-    # tf.train.exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
-    # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
 
-    global_step = tf.Variable(0)
-    learning_rate = tf.train.exponential_decay(0.0001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
-    # Optimizer.
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    tvars = tf.trainable_variables()
-    grads, _ = tf.clip_by_global_norm(tf.gradients(loss, tvars),
-                                      1.0)          #gradient clipping by 1
-    optimize = optimizer.apply_gradients(
-        zip(grads, tvars),
-        global_step=global_step)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        # tf.train.exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
+        # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
+        global_step = tf.Variable(0)
+        learning_rate = tf.train.exponential_decay(0.0001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
+        # Optimizer.
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        tvars = tf.trainable_variables()
+        grads, _ = tf.clip_by_global_norm(tf.gradients(loss, tvars),
+                                          100.0)          #gradient clipping
+        optimize = optimizer.apply_gradients(
+            zip(grads, tvars),
+            global_step=global_step)
 
 
     # Predictions for the training and test data.
@@ -209,7 +199,7 @@ with graph.as_default():
     one_prediction=tf.nn.softmax(model(tf_one_input))
     one_prediction=tf.identity(one_prediction, name="one_prediction")
 
-num_steps = 20000   #number of training iterations
+num_steps = 6000   #number of training iterations
 
 
 #used for drawing error and accuracy over time

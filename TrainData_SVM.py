@@ -68,8 +68,8 @@ test_data=pca.transform(test_data)
 
 ma,mi=train_data.max(),train_data.min()
 
-clf = SVC(C=1, cache_size=200, class_weight=None, coef0=100.0,
-  decision_function_shape=None, degree=2, gamma=0.0001, kernel='poly',
+clf = SVC(C=0.1, cache_size=200, class_weight=None, coef0=1000.0,
+  decision_function_shape=None, degree=2, gamma=0.0001, kernel='linear',
   max_iter=-1, probability=False, random_state=None, shrinking=True,
   tol=0.001, verbose=False)
 clf.fit(train_data, train_labels)

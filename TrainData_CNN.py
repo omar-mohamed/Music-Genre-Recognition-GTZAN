@@ -13,7 +13,7 @@ import random
 
 ##################load data#####################
 
-all_data = pickle.load(open('dataset_normalized_all.pickle', 'rb'))
+all_data = pickle.load(open('dataset_normalized_all_10.pickle', 'rb'))
 train_data = all_data['train_dataset']
 test_data = all_data['test_dataset']
 
@@ -75,7 +75,7 @@ depth3 = 32             # number of filters in third conv layer
 depth4 = 32             # number of filters in first conv layer
 depth5 = 64             # number of filters in second conv layer
 depth6 = 64             # number of filters in third conv layer
-num_hidden1 = 2816      # the size of the unrolled vector after convolution
+num_hidden1 = 123200      # the size of the unrolled vector after convolution
 num_hidden2 = 128       # the size of the hidden neurons in fully connected layer
 num_hidden3 = 128       # the size of the hidden neurons in fully connected layer
 regularization_lambda=4e-2
@@ -117,85 +117,94 @@ with graph.as_default():
     # Variables.
 
     conv1_weights = get_conv_weight('conv1_weights', [patch_size, patch_size, num_channels, depth1])
-    conv1_biases = get_bias_variable("conv1_bias",[depth1])
 
     conv2_weights = get_conv_weight('conv2_weights', [patch_size, patch_size, depth1, depth2])
-    conv2_biases = get_bias_variable("conv2_bias",[depth2])
 
     conv3_weights = get_conv_weight('conv3_weights', [patch_size, patch_size, depth2, depth3])
-    conv3_biases = get_bias_variable("conv3_bias",[depth3])
 
     conv4_weights = get_conv_weight('conv4_weights', [patch_size, patch_size, depth3, depth4])
-    conv4_biases = get_bias_variable("conv4_bias",[depth4])
 
     conv5_weights = get_conv_weight('conv5_weights', [patch_size, patch_size, depth4, depth5])
-    conv5_biases = get_bias_variable("conv5_bias",[depth5])
 
     conv6_weights = get_conv_weight('conv6_weights', [patch_size, patch_size, depth5, depth6])
-    conv6_biases = get_bias_variable("conv6_bias",[depth6])
 
     # genre classifier
 
     hidden1_weights_c1 = get_fully_connected_weight('hidden1_weights', [num_hidden1, num_hidden2])
-    hidden1_biases_c1 = get_bias_variable("hidden1_bias",[num_hidden2])
 
     hidden2_weights_c1 = get_fully_connected_weight('hidden2_weights', [num_hidden2, num_hidden3])
-    hidden2_biases_c1 = get_bias_variable("hidden2_bias",[num_hidden3])
 
     hidden3_weights_c1 = get_fully_connected_weight('hidden3_weights', [num_hidden3, genres_labels])
-    hidden3_biases_c1 = get_bias_variable("hidden3_bias",[genres_labels])
 
 
 
-    def run_hidden_layer(image_vector, hidden_weights, hidden_biases, keep_dropout_rate=1,use_relu=True):
-        hidden = tf.matmul(image_vector, hidden_weights) + hidden_biases
+    def run_hidden_layer(x, hidden_weights, keep_dropout_rate=1,use_relu=True,is_training=False):
+        hidden = tf.matmul(x, hidden_weights)
+
+        hidden = tf.layers.batch_normalization(
+            inputs=hidden,
+            axis=-1,
+            momentum=0.99,
+            epsilon=0.001,
+            center=True,
+            scale=True,
+            training=is_training
+        )
+
         if use_relu:
-            hidden=tf.nn.relu(hidden)
+            hidden=tf.nn.leaky_relu(hidden,0.2)
         if keep_dropout_rate < 1:
             hidden = tf.nn.dropout(hidden, keep_dropout_rate)
 
         return hidden
 
-
-    def run_conv_layer(input, conv_weights, conv_biases):
-        conv = tf.nn.conv2d(input, conv_weights, [1, 1, 1, 1], padding='SAME')
+    def run_conv_layer(x, conv_weights,is_training=False):
+        conv = tf.nn.conv2d(x, conv_weights, [1, 1, 1, 1], padding='SAME')
         conv = tf.nn.max_pool(value=conv, ksize=[1, 2, 2, 1], strides=[1, 2, 2, 1], padding='SAME')
-        conv = tf.nn.local_response_normalization(conv)
-        return tf.nn.relu(conv + conv_biases)
+        conv = tf.layers.batch_normalization(
+            inputs=conv,
+            axis=-1,
+            momentum=0.99,
+            epsilon=0.001,
+            center=True,
+            scale=True,
+            training=is_training
+        )
+        return tf.nn.relu(conv)
 
 
     # Model.
-    def model(data, keep_dropout_rate=1):
+    def model(data, keep_dropout_rate=1,is_training=False):
         hidden=data
         #first conv block
-        hidden = run_conv_layer(hidden, conv1_weights, conv1_biases)
+        hidden = run_conv_layer(hidden, conv1_weights,is_training)
         # second conv block
-        hidden = run_conv_layer(hidden, conv2_weights, conv2_biases)
-        # third conv block
-        hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
-
-        hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
-
-        hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
-
-        hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
+        hidden = run_conv_layer(hidden, conv2_weights,is_training)
+        # # third conv block
+        # hidden = run_conv_layer(hidden, conv3_weights, conv3_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv4_weights, conv4_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv5_weights, conv5_biases)
+        #
+        # hidden = run_conv_layer(hidden, conv6_weights, conv6_biases)
 
         #flatten
         shape = hidden.get_shape().as_list()
         hidden = tf.reshape(hidden, [shape[0], shape[1] * shape[2] * shape[3]])
 
         #  classifier
-        hidden = run_hidden_layer(hidden, hidden1_weights_c1, hidden1_biases_c1, keep_dropout_rate, True)
+        hidden = run_hidden_layer(hidden, hidden1_weights_c1, keep_dropout_rate, True,is_training)
 
-        hidden = run_hidden_layer(hidden, hidden2_weights_c1, hidden2_biases_c1, keep_dropout_rate, True)
+        hidden = run_hidden_layer(hidden, hidden2_weights_c1, keep_dropout_rate, True,is_training)
 
-        hidden=run_hidden_layer(hidden,hidden3_weights_c1,hidden3_biases_c1,1,False)
+        hidden=run_hidden_layer(hidden,hidden3_weights_c1,1,False,is_training)
 
         return hidden
 
 
     # Training computation.
-    logits = model(tf_train_dataset, 0.5)
+    logits = model(tf_train_dataset, 0.5,True)
 
     regularizers=0#regularization_lambda*(tf.nn.l2_loss(hidden1_weights_c1) + tf.nn.l2_loss(hidden1_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden2_weights_c1) + tf.nn.l2_loss(hidden2_biases_c1))+regularization_lambda*(tf.nn.l2_loss(hidden3_weights_c1) + tf.nn.l2_loss(hidden3_biases_c1))
 
@@ -204,19 +213,20 @@ with graph.as_default():
     loss =  tf.reduce_mean(
             tf.nn.sparse_softmax_cross_entropy_with_logits(labels=tf_train_labels, logits=logits))  +regularizers
 
-    # tf.train.exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
-    # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
-
-    global_step = tf.Variable(0)
-    learning_rate = tf.train.exponential_decay(0.00001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
-    # Optimizer.
-    optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
-    tvars = tf.trainable_variables()
-    grads, _ = tf.clip_by_global_norm(tf.gradients(loss, tvars),
-                                      1.0)          #gradient clipping by 1
-    optimize = optimizer.apply_gradients(
-        zip(grads, tvars),
-        global_step=global_step)
+    update_ops = tf.get_collection(tf.GraphKeys.UPDATE_OPS)
+    with tf.control_dependencies(update_ops):
+        # tf.train.exponential_decay(learning_rate, global_step, decay_steps, decay_rate, staircase=False, name=None)
+        # decayed_learning_rate = learning_rate *decay_rate ^ (global_step / decay_steps)
+        global_step = tf.Variable(0)
+        learning_rate = tf.train.exponential_decay(0.0001, global_step, 20000, 0.90, staircase=True)  #use learning rate decay
+        # Optimizer.
+        optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate)
+        tvars = tf.trainable_variables()
+        grads, _ = tf.clip_by_global_norm(tf.gradients(loss, tvars),
+                                          100.0)          #gradient clipping
+        optimize = optimizer.apply_gradients(
+            zip(grads, tvars),
+            global_step=global_step)
 
 
     # Predictions for the training and test data.
