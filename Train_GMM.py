@@ -95,10 +95,12 @@ for index, (name, classifier) in enumerate(classifiers.items()):
     # Train the other parameters using the EM algorithm.
     classifier.fit(train_data)
 
+    # getting predictions of training set
     train_predictions = classifier.predict(train_data)
 
     print("Train Accuracy: %.1f%%" % accuracy(train_predictions, train_labels))
 
+    # getting predictions of training set
     test_predictions = classifier.predict(test_data)
 
     print("Test Accuracy: %.1f%%" % accuracy(test_predictions, test_labels))
