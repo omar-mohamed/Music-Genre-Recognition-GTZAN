@@ -1,13 +1,11 @@
-
 import os
 import sys
 from six.moves.urllib.request import urlretrieve
 
-#GTZAN genre collection.
+# GTZAN genre collection.
 url = 'http://opihi.cs.uvic.ca/sound/genres.tar.gz'
 last_percent_reported = None
 data_root = '.'  # Change me to store data elsewhere
-
 
 
 def download_progress_hook(count, blockSize, totalSize):
