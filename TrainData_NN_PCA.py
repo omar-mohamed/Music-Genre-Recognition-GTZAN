@@ -89,6 +89,7 @@ num_hidden2 = 64  # the size of the hidden neurons in hidden layer
 regularization_lambda = 4e-1  # used in case of L2 regularization
 
 # initializing tensorflow graph
+print("Initializing Tensorflow graph")
 
 graph = tf.Graph()
 with graph.as_default():
