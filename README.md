@@ -107,3 +107,5 @@ As you might have noticed from the results, all the training methods seem to str
 # Environment Used:
 - Python 3.6.1
 - Tensorflow 1.9
+- Librosa 0.6
+- Scikit-learn 0.19.2
