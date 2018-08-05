@@ -101,6 +101,7 @@ As you might have noticed from the results, all the training methods seem to str
 - Use GMM on convolutional neural network output (the output of the convolutional layers)
 - Try more NN architectures and hyper parameters 
 - Try 3D convolutions (structure data in 3d way)
+- Try RNNs
 - Data augmentation 
 
 # Environment Used:
