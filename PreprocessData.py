@@ -12,7 +12,9 @@ import librosa.display
 # http://opihi.cs.uvic.ca/sound/genres.tar.gz
 # GTZAN genre collection.
 
+################## Data Loading #####################
 
+print("Loading Data")
 # function to read and concatenated features from the files
 def read_data(directory='./genres'):
     all_data_mfcc = np.zeros((1000, 20, 1400), dtype=float)
@@ -86,6 +88,9 @@ print("Shape of labels:")
 print(all_labels.shape)
 
 
+################## Normalization #####################
+
+
 # function to standarize the data x=(x-mean)/std
 
 def standarize(x):
@@ -122,9 +127,14 @@ def randomize(dataset, labels):
     return shuffled_dataset, shuffled_labels
 
 
+print("Shuffling data")
 all_data, all_labels = randomize(all_data, all_labels)
 
+print("Standarizing data")
 all_data_standard = standarize(all_data)
+
+
+################## Splitting #####################
 
 
 # function to split data into training and testing (default is 90% for training and 10% for testing)
@@ -153,6 +163,8 @@ def split_data(dataset, labels, num_classes=10, test_images_for_class=10):
     return dataset, labels, test_set, test_labels
 
 
+print("Splitting data into training and testing")
+
 train_set_std, train_labels_std, test_set_std, test_labels_std = split_data(all_data_standard, all_labels)
 
 print("Shape of training set:")
@@ -167,7 +179,12 @@ print(test_set_std.shape)
 print("Shape of test labels:")
 print(test_labels_std.shape)
 
+################## Saving data #####################
+
+
 # save data to a pickle file to load when training
+
+print("Saving data into pickle file")
 
 pickle_file = 'dataset_standarized_all_10.pickle'
 
